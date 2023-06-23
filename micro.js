@@ -73,15 +73,22 @@ let register_pointer = 0
 let register_readBuf = 0
 let register_writeBuf = 0
 
-let MOCK_REGISTER_COUNT = 10
+let MOCK_REGISTER_COUNT = 5
 let MOCK_REGISTERS = Array.from(Array(MOCK_REGISTER_COUNT)).map((i) => 0)
-let MOCK_PGM = [["END", 0, 0, 0]]
+let MOCK_PGM = [
+  ["SET", 0, 3, 0],
+  ["SET", 1, 2, 0],
+  ["COPY", 1, 2, 0],
+  ["STORE", 0, 1, 0],
+  ["LOAD", 0, 1, 0],
+  ["END", 0, 0, 0]
+] // Should be [3,2,3,2]
 
 function program_eval() {
   // END
   // Terminates the program
   if (program_readBuf_cmd === "END") {
-    console.log("end")
+    console.log(MOCK_REGISTERS)
     return
   }
 
