@@ -59,7 +59,7 @@ static void fp_emit_comparator(Inst* inst, int* instCounter, char* comparatorBas
 static void fp_emit_jump_comparator(Inst* inst, int* instCounter, char* comparatorBase){
   emit_line("// J%s %s, %s, %s", comparatorBase, value_str(&inst->jmp), reg_names[inst->dst.reg], src_str(inst));
   emit_str("/*%d*/\t",instCounter[0]);emit_line(makeParameterInst(&inst->dst, 0)); instCounter[0]++;
-  emit_str("/*%d*/\t",instCounter[0]);emit_line(mFakeParameterInst(&inst->src, 1)); instCounter[0]++;
+  emit_str("/*%d*/\t",instCounter[0]);emit_line(makeParameterInst(&inst->src, 1)); instCounter[0]++;
   emit_str("/*%d*/\t",instCounter[0]);emit_line(makeParameterInst(&inst->jmp, 2)); instCounter[0]++;
   emit_str("/*%d*/\t",instCounter[0]);emit_line(makeOperationInst(comparatorBase)); instCounter[0]++;
   emit_str("/*%d*/\t",instCounter[0]);emit_line(makeOperationInst("CJMP")); instCounter[0]++;
