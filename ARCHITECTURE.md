@@ -264,61 +264,35 @@ RES dst
 
 No-op
 
+## Implementation
 
+The architecture is implemented in Figma Prototyping using a set of frames.
+Since Array reads/writes are complicated, these get their own reads, as does
+each instruction.
 
-In total, here are all the commands:
+### PGM_READ
 
-REG, IMM, RES, ADD, SUB, LOAD, STORE, PUTC, GETC, EXIT, CJMP, EQ, NE, LT, GT, LE, GE, DUMP
+This is the entry point to the program. Using the instruction pointer
+(inst_ptr), it reads the current instruction from program memory and stores it
+in the instruction register (inst_op, inst_arg1, inst_arg2).
 
-It's neat that they actually end up being fewer in number than the ELVM commands!
+After reading, the instruction pointer is incremented for the next read, and
+the current instruction is evaluated by navigating to the PGM_EVAL frame.
 
+### PGM_EVAL
 
-# Summary of new commands and a description
+This command just checks the current instruction op and forwards it to the
+relevant INST_XXX frame.
 
-## REG src:register, dst:p_register
+### INST_XXX
 
-Reads the value in the src register and stores it in the destination p register.
+Each instruction has its own frame. It reads the arguments from the instruction
+register and performs the relevant computation. After the computation is done,
+it forwards to the PGM_READ frame to read the next instruction.
 
-## IMM value:immediate, dst:p_register
+### DISPATCH_READ
 
-Stores the provided immediate value in the destination p register.
-
-## RES dst:register
-
-Copies p0, usually the "result" of the operation, to the destination register.
-
-## ADD
-
-Computes p0 + p1 and puts the result in p0.
-
-## SUB
-
-Computes p0 - p1 and puts the result in p0.
-
-## LOAD
-
-Fetches variable memory the address at p1 and stores the result to p0.
-
-## STORE
-
-Stores variable memory at p0 to the address specified by p1.
-
-## PUTC
-
-Prints out p0.
-
-## GETC
-
-Reads a character (0 if EOF) and stores it into p0.
-
-## CJMP
-
-If p0 is true (!=0) jump to p2.
-
-## EQ/NE/LT/GT/LE/GE
-
-Compares p0 and p1 and stores the result into p0
-
-## DUMP
-
-No-op
+When INST_CJMP decides to jump, it forwards to this frame. This frame reads the
+dispatch memory using the p2 register as the address, and sets the instruction
+pointer to the result. After reading, it forwards to the PGM_READ frame to read
+the next instruction.

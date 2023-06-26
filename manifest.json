@@ -1,17 +1,13 @@
 {
-  "name": "FigmaProtoCPU",
+  "name": "FigmaProtoVM",
   "id": "1254535664832952512",
   "api": "1.0.0",
   "main": "code.js",
   "capabilities": [],
   "enableProposedApi": false,
-  "editorType": [
-    "figma"
-  ],
-  "ui": "ui.html",
+  "editorType": ["figma"],
+  "ui": "ui_built.html",
   "networkAccess": {
-    "allowedDomains": [
-      "none"
-    ]
+    "allowedDomains": ["none"]
   }
 }

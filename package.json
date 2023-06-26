@@ -1,5 +1,5 @@
 {
-  "name": "FigmaProtoCPU",
+  "name": "FigmaProtoVM",
   "version": "1.0.0",
   "description": "Your Figma Plugin",
   "main": "code.js",
@@ -10,7 +10,7 @@
   "author": "",
   "license": "",
   "devDependencies": {
-    "@figma/plugin-typings": "*",
+    "@figma/plugin-typings": "^1.68.0",
     "typescript": "*"
   }
 }

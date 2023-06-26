@@ -1,0 +1,353 @@
+<!-- <h2>Rectangle Creator</h2>
+<p>Count: <input id="count" value="5"></p>
+<button id="create">Create</button>
+<button id="cancel">Cancel</button>
+<script>
+
+document.getElementById('create').onclick = () => {
+const textbox = document.getElementById('count');
+const count = parseInt(textbox.value, 10);
+parent.postMessage({ pluginMessage: { type: 'create-rectangles', count } }, '*')
+}
+
+document.getElementById('cancel').onclick = () => {
+parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*')
+}
+
+</script> -->
+
+<style>
+textarea {
+  border-width: 3px;
+}
+.outer {
+  display: flex;
+  flex-wrap: wrap;
+}
+.box {
+  display: inline-flex;
+  flex-direction: column;
+}
+</style>
+
+<script>
+
+var $ = function(id) {
+    return document.getElementById(id);
+};
+
+var get_getchar = function(input) {
+  var ip = 0;
+  return function() {
+    return input.charCodeAt(ip++) | 0;
+  };
+};
+
+var OUTPUTS = '';
+function get_putchar() {
+  OUTPUTS = '';
+  return function(c) {
+    OUTPUTS += String.fromCharCode(c & 255);
+  };
+}
+
+function get_putchar_realtime() {
+  $('out').value = '';
+  return function(c) {
+    $('out').value = $('out').value + String.fromCharCode(c & 255);
+  };
+}
+
+function processInclude(src, used) {
+  return src.replace(/#\s*include\s*[<"](.*?)[>"]/g, function(_, hn) {
+      if (used[hn])
+        return '';
+      used[hn] = true;
+      var h = processInclude(HEADERS[hn], used);
+      if (!h) {
+        throw hn + ": No such file or directory";
+      }
+      return h;
+    });
+}
+
+function filterCompilerOutput(out) {
+  return out.replace(/\x1b\[1;31m(\[.*?\])\x1b\[0m(.*)/g, function(_, t, m) {
+          $("err").innerHTML += t + m + "\n";
+          return '';
+        });
+}
+
+function assemble() {
+  $('instructionCount').innerText = '-'
+  $('maxMemoryUse').innerText = '-'
+  $("pgmemsize").innerText = '-'
+  $("dispatchmemsize").innerText = '-'
+  $("varmemsize").innerText = '-'
+
+  var start = new Date();
+  try {
+    var lang = "js"
+    var eir = lang + "\n" + $("eir").value;
+    main_elc(get_getchar(eir), get_putchar());
+    var trg = OUTPUTS;
+    if (lang == 'x86' || lang == 'piet') {
+      var escaped = '"';
+      for (var i = 0; i < trg.length; i++) {
+        var c = trg.charCodeAt(i);
+        if (c == 34 || c == 92) {
+          escaped += '\\';
+          escaped += trg[i];
+        } else if (c >= 0x20 && c <= 0x7e) {
+          escaped += trg[i];
+        } else {
+          escaped += "\\x";
+          escaped += (c >> 4).toString(16);
+          escaped += (c & 15).toString(16);
+        }
+        if (i % 40 == 39) {
+          escaped += "\" +\n\"";
+        }
+      }
+      trg = escaped + '"';
+    }
+    $("trg").value = trg;
+
+    // Calculate assembly metrics
+    try{
+    const cleanedUp = elvmAssemblyOutputToJSON(trg)
+
+    $("pgmemsize").innerText = cleanedUp.pgm.length
+    $("dispatchmemsize").innerText = cleanedUp.dispatch.length
+    $("varmemsize").innerText = cleanedUp.data.length
+    }catch(e){
+      // Pass
+    }
+
+  } catch (e) {
+    console.error(e);
+    $("err").innerHTML += e + "\n";
+  }
+  console.log("assemble time: " + (new Date() - start) * 0.001);
+}
+
+function compile() {
+  $('pgmemsize').innerText = '-'
+  $('dispatchmemsize').innerText = '-'
+  $('varmemsize').innerText = '-'
+  $('instructionCount').innerText = '-'
+  $('maxMemoryUse').innerText = '-'
+
+  var start = new Date();
+  try {
+    var src = $("src").value;
+    src = processInclude(src, {});
+    console.log(src);
+
+    main_8cc(get_getchar(src), get_putchar());
+    var eir = filterCompilerOutput(OUTPUTS);
+    $("eir").value = eir;
+  } catch (e) {
+    console.error(e);
+    $("err").innerHTML += e + "\n";
+  }
+  console.log("compile time: " + (new Date() - start) * 0.001);
+}
+
+function runEIR() {
+  var start = new Date();
+  try {
+    var eir = $("eir").value;
+    main_eli(get_getchar(eir), get_putchar());
+    $("out").value = OUTPUTS;
+  } catch (e) {
+    console.error(e);
+    $("err").innerHTML += e + "\n";
+  }
+  console.log("run EIR time: " + (new Date() - start) * 0.001);
+}
+
+function runJS() {
+  var start = new Date();
+  try {
+    const cleanedUp = elvmAssemblyOutputToJSON($("trg").value)
+    runCompiled(cleanedUp, get_getchar(src), get_putchar()).then((runtimeData)=>{
+      $("instructionCount").innerText = runtimeData.instructionCount
+      $("maxMemoryUse").innerText = runtimeData.maxMemoryUse
+    })
+    $("out").value = OUTPUTS;
+  } catch (e) {
+    console.error(e);
+    $("err").innerHTML += e + "\n";
+  }
+  console.log("run JS time: " + (new Date() - start) * 0.001);
+}
+
+
+</script>
+
+
+<h2>Transfer to Figma prototype</h2>
+
+<div>
+  <label for="">Program memory
+    <input type="text" value="250" id=""/>
+  </label>
+</div>
+
+<div>
+  <label for="">Dispatch memory
+    <input type="text" value="10" id=""/>
+  </label>
+</div>
+
+<div>
+  <label for="">Data memory
+    <input type="text" value="20" id=""/>
+  </label>
+</div>
+<div>
+  <i>Changing these numbers will have no effect if the prototype interactions aren't updated either!</i>
+</div>
+
+<div>
+<input type="button" value="Create collections and variables" onclick="buildVarSets()">
+</div>
+
+<input type="button" value="Compile" onclick="compile()">
+
+
+<h2>Compiler/assembler</h2>
+
+<div class="outer">
+
+<div class="box">
+<div class="box">C code</div>
+<div class="box">
+<textarea id="src" cols=40 rows=24>
+// You can run a larger C program (FizzBuzz) by changing this condition.
+// Note you may not want to do this for slower backends (e.g., Brainfuck).
+#if 1
+int putchar(int c);
+
+int main() {
+  const char* p = "Hello, world!\n";
+  for (int i = 0; i < 20; i++)
+    putchar(p[i]);
+  return 0;
+}
+
+#else
+
+int putchar(int c);
+
+int div(int a, int b){
+  int result = 0;
+  while(a >= b){
+    a -= b;
+    result++;
+  }
+  return result;
+}
+
+int mod(int a, int b){
+  int result = 0;
+  while(a >= b){
+    a -= b;
+  }
+  return a;
+}
+
+const char* str = "FizzBuzz";
+
+void fizz() {
+  for (int i = 0; i < 4; i++)
+    putchar(str[i]);
+}
+
+void buzz() {
+  for (int i = 4; i < 8; i++)
+    putchar(str[i]);
+}
+
+int isDivisible(int a, int b){
+  return mod(a, b) == 0;
+}
+
+int printNum(int num){
+  if(num >= 10){
+    putchar(48 + div(num, 10));
+  }
+  putchar(48 +  mod(num, 10));
+}
+
+int main() {
+  for (int i = 1; i <= 10; i++) {
+    int div5 = isDivisible(i, 5);
+    int div3 = isDivisible(i, 3);
+    if(div3 && div5){
+      fizz(); buzz();
+    }else if(div3){
+      fizz();
+    }else if(div5){
+      buzz();
+    }else{
+      printNum(i);
+    }
+    putchar('\n');
+
+  }
+  return 0;
+}
+
+#endif
+
+</textarea>
+</div>
+</div>
+
+<div class="box">
+<div class="box">ELVM IR</div>
+<div class="box">
+<textarea id="eir" cols=20 rows=24></textarea>
+</div>
+</div>
+
+<div class="box">
+<div class="box">Assembled code</div>
+<div class="box">
+<textarea id="trg" cols=20 rows=24></textarea>
+</div>
+</div>
+
+<div class="box">
+<div class="box">Output</div>
+<div class="box">
+<textarea id="out" cols=40 rows=24></textarea>
+</div>
+</div>
+
+</div>
+
+<pre id="err"></pre>
+
+<input type="button" value="Compile" onclick="compile()">
+<input type="button" value="Assemble (give it a moment)" onclick="assemble()">
+<!-- <input type="button" value="Run EIR" onclick="runEIR()"> -->
+<input type="button" value="Run" onclick="runJS()">
+
+<ul>
+  <li>"Compile" generates ELVM IR.</li>
+  <li>"Assemble" assembles IR into prototyping vm instructions. First run can be a bit slow.</li> 
+  <!-- <li>"Run EIR" runs ELVM IR on JavaScript (eli.js).</li> -->
+  <li>"Run" uses JS-based vm to run the assembled code.</li>
+</ul>
+
+
+<div>Program memory size: <span id="pgmemsize">-</span> variables (assemble to update)</div>
+<div>Dispatch memory size: <span id="dispatchmemsize">-</span> variables (assemble to update)</div>
+<div>Data memory size: <span id="varmemsize">-</span> variables (assemble to update) - you may need more for dynamic mem access</div>
+<div>Runtime instructions: <span id="instructionCount">-</span> (run to update)</div>
+<div>Runtime memory use: <span id="maxMemoryUse">-</span> (run to update)</div>
+
+

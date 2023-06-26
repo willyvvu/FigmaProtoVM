@@ -1,9 +1,16 @@
 # Default target
-all: elvm-build
+all: plugin
 
-clean: elvm-clean
+clean: elvm-clea
 
-# Web build
+plugin: ui_built.html code.ts
+	npm run build
+
+# Combine asmjs targets with our ui.html into our final build
+ui_built.html: elvm-build src/ui.html codegen/elvm/out/8cc.c.eir.asmjs codegen/elvm/out/elc.c.eir.asmjs codegen/elvm/out/eli.c.eir.asmjs codegen/elvm/web/headers.js
+	node build_ui.js
+
+# Build asmjs target for the compiler
 elvm-build: elvm-prereqs
 	cd codegen/elvm && ruby tools/makeweb.rb
 

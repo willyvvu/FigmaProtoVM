@@ -1,6 +1,6 @@
-# Figma Prototyping CPU
+# Figma Prototyping VM
 
-Let's build a toy CPU inside of Figma Prototyping! This project contains a
+Let's build a toy VM inside of Figma Prototyping! This project contains a
 plugin and most tooling needed to build it.
 
 ## Getting started

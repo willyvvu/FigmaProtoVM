@@ -177,7 +177,7 @@ static void fp_emit_inst(Inst* inst, int* instCounter) {
 
 void target_js(Module* module) {
   emit_line("{");
-  emit_line("data:[");
+  emit_line("\"data\":[");
   int mp = 0;
   for (Data* data = module->data; data; data = data->next, mp++) {
     if (data->v) {
@@ -198,7 +198,7 @@ void target_js(Module* module) {
   int* dispatchTable = calloc(total_pc, sizeof(int));
 
   // emit_line("],");
-  emit_line("pgm:[");
+  emit_line("\"pgm\":[");
 
   int instCounter = 0;
   int last_pc = -1;
@@ -213,7 +213,7 @@ void target_js(Module* module) {
   }
 
   emit_line("],");
-  emit_line("dispatch:[");
+  emit_line("\"dispatch\":[");
 
   for(int i = 0; i < total_pc; i++){
     emit_str(format("%d,", dispatchTable[i]));
