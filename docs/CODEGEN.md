@@ -1,8 +1,5 @@
 # Code Generation
 
-
-## Overview
-
 It'd be insane if we could take c code and translate it to a form that we can
 run with our architecture. Fortunately, there's a project called
 [ELVM](https://github.com/shinh/elvm) that can help us do that. It's built for

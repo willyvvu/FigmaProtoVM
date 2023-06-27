@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const elvmMakefilePath = path.join(__dirname, 'elvm/Makefile');
+const elvmMakefilePath = path.join(__dirname, '../codegen/elvm/Makefile');
 const elvmMakefile = fs.readFileSync(elvmMakefilePath, 'utf8');
 
 // Add our own target by blowing away everything after "# Targets" and replacing

@@ -4,8 +4,8 @@
 node_modules
 
 out/
-dist/
-code.js
+# dist/
+
 
 .DS_Store
 

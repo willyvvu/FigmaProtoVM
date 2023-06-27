@@ -2,11 +2,11 @@
   "name": "FigmaProtoVM",
   "id": "1254535664832952512",
   "api": "1.0.0",
-  "main": "code.js",
+  "main": "dist/code.js",
   "capabilities": [],
   "enableProposedApi": false,
   "editorType": ["figma"],
-  "ui": "ui_built.html",
+  "ui": "dist/ui.html",
   "networkAccess": {
     "allowedDomains": ["none"]
   }
