@@ -165,6 +165,9 @@ RES dst
 
 Fetches variable memory the address at p1 and stores the result to p0.
 
+Note that due to the floating point nature of our variables, when a negative
+address is requested, we just grab from the end of the array.
+
 For example, `LOAD dst, src` becomes:
 
 ```
@@ -176,6 +179,9 @@ RES dst
 ### STORE
 
 Stores variable memory at p0 to the address specified by p1.
+
+Note that due to the floating point nature of our variables, when a negative
+address is requested, we just grab from the end of the array.
 
 For example, `STORE src, dst` becomes:
 

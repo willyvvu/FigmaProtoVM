@@ -110,11 +110,10 @@ async function runCompiled(compiled, getChar, putChar) {
       throw new Error('Taking a while... is there an infinite loop?');
     }
     // await wait(10);
-
     const [instruction, arg1, arg2, debugInfo] = compiled.pgm[instructionPointer];
     instructionPointer++;
 
-    // console.log(parameterRegisters);
+
     if (debugInfo) {
       // console.log(variableMemory);
       // console.log(registers);

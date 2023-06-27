@@ -184,40 +184,239 @@ function runJS() {
 }
 
 
+function assembleLL() {
+  $('instructionCount').innerText = '-'
+  $('maxMemoryUse').innerText = '-'
+  $("pgmemsize").innerText = '-'
+  $("dispatchmemsize").innerText = '-'
+  $("varmemsize").innerText = '-'
+
+  var start = new Date();
+  try {
+    const program = $("llcode").value.trim().split("\n").map(l=>l.trim()).filter(l=>l.length>0)
+
+    // Discard comments
+    const cleanedUp = program.filter(l=>!l.startsWith("//"))
+
+    // Discard jump labels (but track their position)
+    const dispatchTable = [0]
+    for(let i = 0; i < cleanedUp.length; i++){
+      const line = cleanedUp[i]
+      if(line.startsWith(".")){
+        dispatchTable.push(i)
+        // Remove from the cleanedUp array
+        cleanedUp.splice(i, 1)
+        i--;
+      }
+    }
+
+    // Parse each instruction
+    const parsed = cleanedUp.map(line=>{
+      // A line could look like IMM 0, p1
+      // Treat commas as whitespace, and treat any amount of whitespace as separator
+      const tokens = line.split(/[\s,]+/)
+
+      // If we have less than 3 tokens, add _ as a token
+      while(tokens.length < 3){
+        tokens.push("_")
+      }
+
+      return tokens
+    })
+
+    // Grab data from the data text area
+    const data = $("lldata").value.trim().split("\n").map(l=>l.trim()).filter(l=>l.length>0)
+
+    // Convert data to ints
+    const dataInts = data.map(l=>{
+      const tokens = l.split(/[\s,]+/)
+      return tokens.map(t=>parseInt(t))
+    })
+
+    // Join the data into a single array
+    const dataFlat = dataInts.reduce((acc, val)=>acc.concat(val), [])
+
+    // Build and return output
+    const output = `{
+  "data": ${JSON.stringify(dataFlat)},
+  "dispatch": ${JSON.stringify(dispatchTable)},
+  "pgm": [
+${parsed.map((l,i)=>[`/* ${i} */ [${l.join(", ")}]`]).join(",\n")}
+]
+}`
+
+    $("trg").value = output;
+
+    // Calculate assembly metrics
+    try{
+    const cleanedUp = elvmAssemblyOutputToJSON(trg)
+
+    $("pgmemsize").innerText = cleanedUp.pgm.length
+    $("dispatchmemsize").innerText = cleanedUp.dispatch.length
+    $("varmemsize").innerText = cleanedUp.data.length
+    }catch(e){
+      // Pass
+    }
+
+  } catch (e) {
+    console.error(e);
+    $("err").innerHTML += e + "\n";
+  }
+  console.log("ll assemble time: " + (new Date() - start) * 0.001);
+}
+
+
 </script>
 
 
-<h2>Transfer to Figma prototype</h2>
+<!-- <h2>Transfer to Figma prototype</h2> -->
 
+<script>
+  function buildVarSets(){
+    parent.postMessage({
+      pluginMessage: {
+        type: 'buildVarSets',
+        pgmemcount: parseInt($('pgmemcount').value),
+        dispatchmemcount: parseInt($('dispatchmemcount').value),
+        datamemcount: parseInt($('datamemcount').value),
+      }
+    }, '*')
+  }
+  
+  function loadProgram(){
+    parent.postMessage({
+      pluginMessage: {
+        type: 'loadProgram',
+        compiled: elvmAssemblyOutputToJSON($("trg").value)
+      }
+    }, '*')
+  }
+
+  function buildProtoInteractions(){
+    // Pg mem
+    const PGM_READ = buildPgRead(parseInt($('pgmemcount').value), "PGM_EVAL")
+    
+    // Dispatch mem
+    const DISPATCH_READ = buildMemRW("reg_p2", (i)=>"dispatchmem_"+i, ()=>"inst_ptr", parseInt($('dispatchmemcount').value), "!PGM_READ")
+    
+    // INST_LOAD
+    const INST_LOAD = populateDataMemReadIndex().concat(buildMemRW("data_mem_read_index", (i)=>"datamem_"+i, ()=>"reg_p0", parseInt($('datamemcount').value), "!PGM_READ"))
+
+    // INST_STORE
+    const INST_STORE = populateDataMemReadIndex().concat(buildMemRW("data_mem_read_index", ()=>"reg_p0" ,(i)=>"datamem_"+i, parseInt($('datamemcount').value), "!PGM_READ"))
+
+    // PUTC console output
+    const INST_PUTC = buildConsole(10, "!PGM_READ")
+
+    return {
+      PGM_READ,
+      DISPATCH_READ,
+      INST_LOAD,
+      INST_STORE,
+      INST_PUTC,
+    }
+  }
+
+  function buildPgRead(num, nextframe){
+    const out = []
+
+    for(let i = 0; i < num; i++){
+      out.push(["CONDITIONAL", ["EQUAL", "inst_ptr", i], [
+      ["SET_NUM_VAR_VAR_MODE", "inst_op", "pgmem_"+i, "Program Memory", "Op"],
+      ["SET_NUM_VAR_VAR_MODE", "inst_arg1", "pgmem_"+i, "Program Memory", "Arg1"],
+      ["SET_NUM_VAR_VAR_MODE", "inst_arg2", "pgmem_"+i, "Program Memory", "Arg2"],
+      ]])
+    }
+
+    out.push(["INCREMENT_NUM_VAR_CONST", "inst_ptr", 1])
+    out.push(["NAVIGATE_TO", nextframe])
+
+    return out
+  }
+  function populateDataMemReadIndex(){
+    return [
+      ["SET_NUM_VAR_VAR", "data_mem_read_index", "reg_p1"],
+      // IF data_mem_read_index is negative, add data_mem_size
+      ["CONDITIONAL", ["LESS_THAN", "data_mem_read_index", 0], [
+        // Todo should be addition but I'm lazy I'll change it by hand
+        ["SET_NUM_VAR_VAR", "data_mem_read_index", "data_mem_size"]
+      ]],
+    ]
+  }
+  function buildMemRW(index,src, dest, num, nextframe){
+    const out = []
+
+    for(let i = 0; i < num; i++){
+      out.push(["CONDITIONAL", ["EQUAL", index, i], [["SET_NUM_VAR_VAR", dest(i), src(i)]]])
+    }
+
+    out.push(["NAVIGATE_TO", nextframe])
+
+    return out
+  }
+
+  function buildConsole(lines, nextframe){
+    // Output 
+    const out = []
+
+    // Individual characters
+    for(let i = 32; i <= 126; i++){
+      out.push(["CONDITIONAL", ["EQUAL", "reg_p0", i], [["APPEND_STR_VAR", "console_line10", String.fromCharCode(i)]]])
+    }
+
+    // Newline
+    // Shift all console lines up by one
+    const newLineActions = []
+    for(let i = 2; i <= lines; i++){
+      newLineActions.push(["SET_STR_VAR_VAR", "console_line" + (i-1), "console_line" + i])
+    }
+
+    // Clear last line
+    newLineActions.push(["SET_STR_VAR_CONST", "console_line"+lines, " "])
+
+    // Move lines up
+    newLineActions.push(["DECREMENT_NUM_VAR_VAR", "console_offset_bottom", "console_line_height"])
+    
+    out.push(["CONDITIONAL", ["EQUAL", "reg_p0", 10], newLineActions])
+    
+    // No nested conditionals - ensure offset is more than zero
+    out.push(["CONDITIONAL", ["LESS_THAN", "console_offset_bottom", 0], [["SET_NUM_VAR_CONST", "console_offset_bottom", 0]]])
+    
+    out.push(["NAVIGATE_TO", nextframe])
+
+    return out;
+  }
+
+
+  </script>
+<div>
+<!-- 
 <div>
   <label for="">Program memory
-    <input type="text" value="250" id=""/>
+    <input type="text" value="250" id="pgmemcount"/>
   </label>
 </div>
 
 <div>
   <label for="">Dispatch memory
-    <input type="text" value="10" id=""/>
+    <input type="text" value="50" id="dispatchmemcount"/>
   </label>
 </div>
 
 <div>
   <label for="">Data memory
-    <input type="text" value="20" id=""/>
+    <input type="text" value="200" id="datamemcount"/>
   </label>
 </div>
 <div>
   <i>Changing these numbers will have no effect if the prototype interactions aren't updated either!</i>
 </div>
-
-<div>
 <input type="button" value="Create collections and variables" onclick="buildVarSets()">
-</div>
-
-<input type="button" value="Compile" onclick="compile()">
+</div> -->
 
 
-<h2>Compiler/assembler</h2>
+
+<h2>Step 1: Compile & Assemble your C program with ELVM</h2>
 
 <div class="outer">
 
@@ -309,21 +508,8 @@ int main() {
 <div class="box">
 <div class="box">ELVM IR</div>
 <div class="box">
-<textarea id="eir" cols=20 rows=24></textarea>
+<textarea id="eir" cols=40 rows=24></textarea>
 </div>
-</div>
-
-<div class="box">
-<div class="box">Assembled code</div>
-<div class="box">
-<textarea id="trg" cols=20 rows=24></textarea>
-</div>
-</div>
-
-<div class="box">
-<div class="box">Output</div>
-<div class="box">
-<textarea id="out" cols=40 rows=24></textarea>
 </div>
 </div>
 
@@ -333,21 +519,83 @@ int main() {
 
 <input type="button" value="Compile" onclick="compile()">
 <input type="button" value="Assemble (give it a moment)" onclick="assemble()">
-<!-- <input type="button" value="Run EIR" onclick="runEIR()"> -->
-<input type="button" value="Run" onclick="runJS()">
 
 <ul>
   <li>"Compile" generates ELVM IR.</li>
   <li>"Assemble" assembles IR into prototyping vm instructions. First run can be a bit slow.</li> 
-  <!-- <li>"Run EIR" runs ELVM IR on JavaScript (eli.js).</li> -->
-  <li>"Run" uses JS-based vm to run the assembled code.</li>
 </ul>
 
+<h2>Step 1 (alternate): Assemble lower level program</h2>
+<div class="outer">
+<div class="box">
+<div class="box">Assembly + Labels</div>
+<div class="box">
+<textarea id="llcode" cols=40 rows=24>
+// Store 0 into A
+IMM 0 0
+RES a
 
+.L1
+// Print some stuff
+REG a 0
+IMM 49 1
+ADD
+PUTC
+IMM 10 0
+PUTC
+
+// a++
+REG a 0
+IMM 1 1
+ADD
+RES a
+
+// if a < 12 loop
+IMM 12 1
+LT
+IMM 1 2
+CJMP
+EXIT
+</textarea>
+</div>
+</div>
+<div class="box">
+<div class="box">Data (each line is data entry)</div>
+<div class="box">
+<textarea id="lldata" cols=40 rows=24></textarea>
+</div>
+</div>
+</div>
+<input type="button" value="Assemble" onclick="assembleLL()">
+
+
+
+
+<h2>Step 2: Validate using JS runtime</h2>
+<div class="outer">
+<div class="box">
+<div>Assembled code</div>
+<textarea id="trg" cols=40 rows=24></textarea>
+</div>
+<div class="box">
+  <div>JS Runtime output</div>
+<textarea id="out" cols=40 rows=24></textarea>
+</div>
+</div>
 <div>Program memory size: <span id="pgmemsize">-</span> variables (assemble to update)</div>
 <div>Dispatch memory size: <span id="dispatchmemsize">-</span> variables (assemble to update)</div>
 <div>Data memory size: <span id="varmemsize">-</span> variables (assemble to update) - you may need more for dynamic mem access</div>
 <div>Runtime instructions: <span id="instructionCount">-</span> (run to update)</div>
 <div>Runtime memory use: <span id="maxMemoryUse">-</span> (run to update)</div>
+<!-- <input type="button" value="Run EIR" onclick="runEIR()"> -->
+<input type="button" value="Run" onclick="runJS()">
 
 
+  
+
+
+  <!-- <li>"Run EIR" runs ELVM IR on JavaScript (eli.js).</li> -->
+  <li>"Run" uses JS-based vm to run the assembled code.</li>
+
+<h2>Step 3: Load into figma!!</h2>
+<input type="button" value="LOAD INTO FIGMA" onclick="loadProgram()">
