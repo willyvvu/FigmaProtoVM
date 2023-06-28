@@ -3,6 +3,12 @@
 Let's build a toy VM inside of Figma Prototyping! This project contains a
 plugin and most tooling needed to build it.
 
+**Live Figma File link [HERE](https://www.figma.com/file/1HToUStr2gxdYyQEByOjG0/Figma-Proto-VM!!?type=design&node-id=0%3A1&mode=design&t=U0irvg7oci8a9MA2-1)!**
+
+[![Figma Proto VM Screenrecord copy](https://github.com/willy-vvu/FigmaProtoVM/assets/3529065/4de8be6c-9892-452b-8db6-464fd7a19bfd)](https://twitter.com/willyvvu/status/1673565503602962432?s=20)
+
+(Click the gif for the full video)
+
 I've left the `dist` folder in the repo so you can try it out without building
 it yourself. Just load the plugin as a dev plugin and you should be good to go!
 
