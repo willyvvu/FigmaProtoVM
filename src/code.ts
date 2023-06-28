@@ -61,18 +61,7 @@ figma.ui.onmessage = (msg) => {
       return;
     }
 
-    const pgmemModes = pgmemcollection.modes;
-    const opMode = pgmemModes.find((mode) => mode.name === "Op")?.modeId;
-    const arg1Mode = pgmemModes.find((mode) => mode.name === "Arg1")?.modeId;
-    const arg2Mode = pgmemModes.find((mode) => mode.name === "Arg2")?.modeId;
-
-    if (!opMode || !arg1Mode || !arg2Mode) {
-      console.log(
-        `Could not find modes for program memory - are the variables configured correctly?`
-      );
-      return;
-    }
-
+    const pgmemMode = pgmemcollection.modes[0].modeId;
     const dataMode = datacollection.modes[0].modeId;
     const dispatchMode = dispatchcollection.modes[0].modeId;
 
@@ -140,37 +129,51 @@ figma.ui.onmessage = (msg) => {
 
     // Program mem
     for (let i = 0; i < msg.compiled.pgm.length; i++) {
-      const programMemVar = cachedVariables.find(
-        (variable) => variable.name === `pgmem_${i}`
+      const programMemVarOp = cachedVariables.find(
+        (variable) => variable.name === `pgmem_${i}_op`
       );
-      if (!programMemVar) {
+      const programMemVarArg1 = cachedVariables.find(
+        (variable) => variable.name === `pgmem_${i}_arg1`
+      );
+      const programMemVarArg2 = cachedVariables.find(
+        (variable) => variable.name === `pgmem_${i}_arg2`
+      );
+
+      if (!programMemVarOp || !programMemVarArg1 || !programMemVarArg2) {
         console.log(
-          `Could not find variable pgmem_${i} - is the program too large?`
+          `Could not find variable pgmem_${i}_xxx - is the program too large or variables set up correctly?`
         );
         break;
       }
 
-      programMemVar.setValueForMode(opMode, msg.compiled.pgm[i][0]);
-      programMemVar.setValueForMode(arg1Mode, msg.compiled.pgm[i][1]);
-      programMemVar.setValueForMode(arg2Mode, msg.compiled.pgm[i][2]);
+      programMemVarOp.setValueForMode(pgmemMode, msg.compiled.pgm[i][0]);
+      programMemVarArg1.setValueForMode(pgmemMode, msg.compiled.pgm[i][1]);
+      programMemVarArg2.setValueForMode(pgmemMode, msg.compiled.pgm[i][2]);
     }
 
     // Clear rest of program mem
     for (
       let i = msg.compiled.pgm.length;
-      i < pgmemcollection.variableIds.length;
+      i < pgmemcollection.variableIds.length / 3;
       i++
     ) {
-      const programMemVar = cachedVariables.find(
-        (variable) => variable.name === `pgmem_${i}`
+      const programMemVarOp = cachedVariables.find(
+        (variable) => variable.name === `pgmem_${i}_op`
       );
-      if (!programMemVar) {
+      const programMemVarArg1 = cachedVariables.find(
+        (variable) => variable.name === `pgmem_${i}_arg1`
+      );
+      const programMemVarArg2 = cachedVariables.find(
+        (variable) => variable.name === `pgmem_${i}_arg2`
+      );
+
+      if (!programMemVarOp || !programMemVarArg1 || !programMemVarArg2) {
         break;
       }
 
-      programMemVar.setValueForMode(opMode, 0);
-      programMemVar.setValueForMode(arg1Mode, 0);
-      programMemVar.setValueForMode(arg2Mode, 0);
+      programMemVarOp.setValueForMode(pgmemMode, 0);
+      programMemVarArg1.setValueForMode(pgmemMode, 0);
+      programMemVarArg2.setValueForMode(pgmemMode, 0);
     }
   }
 
@@ -178,15 +181,23 @@ figma.ui.onmessage = (msg) => {
     const cachedVariables = figma.variables.getLocalVariables();
 
     const pgmemcollection = findOrCreateCollection("Program Memory");
-    if (pgmemcollection.modes.length === 1) {
-      pgmemcollection.renameMode(pgmemcollection.modes[0].modeId, "Op");
-      pgmemcollection.addMode("Arg1");
-      pgmemcollection.addMode("Arg2");
-    }
+
     for (let i = 0; i < msg.pgmemcount; i++) {
       console.log("Creating variable pgmem_" + i);
       findOrCreateVariable(
-        `pgmem_${i}`,
+        `pgmem_${i}_op`,
+        pgmemcollection.id,
+        "FLOAT",
+        cachedVariables
+      );
+      findOrCreateVariable(
+        `pgmem_${i}_arg1`,
+        pgmemcollection.id,
+        "FLOAT",
+        cachedVariables
+      );
+      findOrCreateVariable(
+        `pgmem_${i}_arg2`,
         pgmemcollection.id,
         "FLOAT",
         cachedVariables

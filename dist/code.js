@@ -32,7 +32,6 @@ function findOrCreateVariable(name, collection, type, cachedVariables) {
     return variable;
 }
 figma.ui.onmessage = (msg) => {
-    var _a, _b, _c;
     if (msg.type === "loadProgram") {
         // Load the program into the variables
         const cachedVariables = figma.variables.getLocalVariables();
@@ -43,14 +42,7 @@ figma.ui.onmessage = (msg) => {
             console.log("Could not find one of the collections - have they been created properly?");
             return;
         }
-        const pgmemModes = pgmemcollection.modes;
-        const opMode = (_a = pgmemModes.find((mode) => mode.name === "Op")) === null || _a === void 0 ? void 0 : _a.modeId;
-        const arg1Mode = (_b = pgmemModes.find((mode) => mode.name === "Arg1")) === null || _b === void 0 ? void 0 : _b.modeId;
-        const arg2Mode = (_c = pgmemModes.find((mode) => mode.name === "Arg2")) === null || _c === void 0 ? void 0 : _c.modeId;
-        if (!opMode || !arg1Mode || !arg2Mode) {
-            console.log(`Could not find modes for program memory - are the variables configured correctly?`);
-            return;
-        }
+        const pgmemMode = pgmemcollection.modes[0].modeId;
         const dataMode = datacollection.modes[0].modeId;
         const dispatchMode = dispatchcollection.modes[0].modeId;
         // Data mem
@@ -89,37 +81,38 @@ figma.ui.onmessage = (msg) => {
         }
         // Program mem
         for (let i = 0; i < msg.compiled.pgm.length; i++) {
-            const programMemVar = cachedVariables.find((variable) => variable.name === `pgmem_${i}`);
-            if (!programMemVar) {
-                console.log(`Could not find variable pgmem_${i} - is the program too large?`);
+            const programMemVarOp = cachedVariables.find((variable) => variable.name === `pgmem_${i}_op`);
+            const programMemVarArg1 = cachedVariables.find((variable) => variable.name === `pgmem_${i}_arg1`);
+            const programMemVarArg2 = cachedVariables.find((variable) => variable.name === `pgmem_${i}_arg2`);
+            if (!programMemVarOp || !programMemVarArg1 || !programMemVarArg2) {
+                console.log(`Could not find variable pgmem_${i}_xxx - is the program too large or variables set up correctly?`);
                 break;
             }
-            programMemVar.setValueForMode(opMode, msg.compiled.pgm[i][0]);
-            programMemVar.setValueForMode(arg1Mode, msg.compiled.pgm[i][1]);
-            programMemVar.setValueForMode(arg2Mode, msg.compiled.pgm[i][2]);
+            programMemVarOp.setValueForMode(pgmemMode, msg.compiled.pgm[i][0]);
+            programMemVarArg1.setValueForMode(pgmemMode, msg.compiled.pgm[i][1]);
+            programMemVarArg2.setValueForMode(pgmemMode, msg.compiled.pgm[i][2]);
         }
         // Clear rest of program mem
-        for (let i = msg.compiled.pgm.length; i < pgmemcollection.variableIds.length; i++) {
-            const programMemVar = cachedVariables.find((variable) => variable.name === `pgmem_${i}`);
-            if (!programMemVar) {
+        for (let i = msg.compiled.pgm.length; i < pgmemcollection.variableIds.length / 3; i++) {
+            const programMemVarOp = cachedVariables.find((variable) => variable.name === `pgmem_${i}_op`);
+            const programMemVarArg1 = cachedVariables.find((variable) => variable.name === `pgmem_${i}_arg1`);
+            const programMemVarArg2 = cachedVariables.find((variable) => variable.name === `pgmem_${i}_arg2`);
+            if (!programMemVarOp || !programMemVarArg1 || !programMemVarArg2) {
                 break;
             }
-            programMemVar.setValueForMode(opMode, 0);
-            programMemVar.setValueForMode(arg1Mode, 0);
-            programMemVar.setValueForMode(arg2Mode, 0);
+            programMemVarOp.setValueForMode(pgmemMode, 0);
+            programMemVarArg1.setValueForMode(pgmemMode, 0);
+            programMemVarArg2.setValueForMode(pgmemMode, 0);
         }
     }
     if (msg.type === "buildVarSets") {
         const cachedVariables = figma.variables.getLocalVariables();
         const pgmemcollection = findOrCreateCollection("Program Memory");
-        if (pgmemcollection.modes.length === 1) {
-            pgmemcollection.renameMode(pgmemcollection.modes[0].modeId, "Op");
-            pgmemcollection.addMode("Arg1");
-            pgmemcollection.addMode("Arg2");
-        }
         for (let i = 0; i < msg.pgmemcount; i++) {
             console.log("Creating variable pgmem_" + i);
-            findOrCreateVariable(`pgmem_${i}`, pgmemcollection.id, "FLOAT", cachedVariables);
+            findOrCreateVariable(`pgmem_${i}_op`, pgmemcollection.id, "FLOAT", cachedVariables);
+            findOrCreateVariable(`pgmem_${i}_arg1`, pgmemcollection.id, "FLOAT", cachedVariables);
+            findOrCreateVariable(`pgmem_${i}_arg2`, pgmemcollection.id, "FLOAT", cachedVariables);
         }
         const dispatchcollection = findOrCreateCollection("Dispatch Memory");
         for (let i = 0; i < msg.dispatchmemcount; i++) {

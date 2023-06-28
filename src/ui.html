@@ -154,13 +154,13 @@ async function custom_getchar(){
   // Wait for the user to press a key
   const key = await new Promise((resolve, reject) => {
     $("runtimeinput").disabled = false
+    // Remove all chars from input field
+    $("runtimeinput").value = ''
     $("runtimeinput").onkeydown = (e) => {
-      if(e.key !== "Shift" && e.key !== "Control" && e.key !== "Alt" && e.key !== "Meta"){
+      if(e.key.length === 1 || e.key === "Enter"){ // Exclude shift, ctrl, alt, etc.
         // convert the key to a char code
         const charCode = e.key === "Enter" ? 10 : e.key.charCodeAt(0)
         
-        // Remove all but the last char from the input field
-        $("runtimeinput").value = String.fromCharCode(charCode)
         
         // re-disable the input field
         $("runtimeinput").disabled = true
@@ -331,9 +331,9 @@ ${parsed.map((l,i)=>[`/* ${i} */ [${l.join(", ")}]`]).join(",\n")}
 
     for(let i = 0; i < num; i++){
       out.push(["CONDITIONAL", ["EQUAL", "inst_ptr", i], [
-      ["SET_NUM_VAR_VAR_MODE", "inst_op", "pgmem_"+i, "Program Memory", "Op"],
-      ["SET_NUM_VAR_VAR_MODE", "inst_arg1", "pgmem_"+i, "Program Memory", "Arg1"],
-      ["SET_NUM_VAR_VAR_MODE", "inst_arg2", "pgmem_"+i, "Program Memory", "Arg2"],
+      ["SET_NUM_VAR_VAR", "inst_op", "pgmem_"+i+"_op"],
+      ["SET_NUM_VAR_VAR", "inst_arg1", "pgmem_"+i+"_arg1"],
+      ["SET_NUM_VAR_VAR", "inst_arg2", "pgmem_"+i+"_arg2"],
       ]])
     }
 
@@ -398,8 +398,9 @@ ${parsed.map((l,i)=>[`/* ${i} */ [${l.join(", ")}]`]).join(",\n")}
 
 
   </script>
+
+<div style="display:none">
 <div>
-<!-- 
 <div>
   <label for="">Program memory
     <input type="text" value="250" id="pgmemcount"/>
@@ -421,7 +422,8 @@ ${parsed.map((l,i)=>[`/* ${i} */ [${l.join(", ")}]`]).join(",\n")}
   <i>Changing these numbers will have no effect if the prototype interactions aren't updated either!</i>
 </div>
 <input type="button" value="Create collections and variables" onclick="buildVarSets()">
-</div> -->
+</div>
+</div>
 
 
 

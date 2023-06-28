@@ -3,7 +3,7 @@
 Let's build a toy VM inside of Figma Prototyping! This project contains a
 plugin and most tooling needed to build it.
 
-**Live Figma File link [HERE](https://www.figma.com/file/1HToUStr2gxdYyQEByOjG0/Figma-Proto-VM!!?type=design&node-id=0%3A1&mode=design&t=U0irvg7oci8a9MA2-1)!**
+**Live Figma File link [HERE](https://www.figma.com/file/21tGuyZAeOmk6Ejk0Y4wt1/Figma-Proto-VM!?type=design&node-id=0-1&mode=design&t=jEIGRgyL2iJZqOkD-11)!**
 
 [![Figma Proto VM Screenrecord copy](https://github.com/willy-vvu/FigmaProtoVM/assets/3529065/4de8be6c-9892-452b-8db6-464fd7a19bfd)](https://twitter.com/willyvvu/status/1673565503602962432?s=20)
 
@@ -58,7 +58,9 @@ In order to implement the existing ELVM memory, we have:
   -> int) and the second two are arguments for the instruction. Some
   instructions need no arguments so they can be left as 0. Note that the
   instruction set is slightly different from the ELVM set, which will be covered
-  later.
+  later. (Update: instead of modes, they're now just separate variables ending
+  in \_op, \_arg1, and \_arg2, this is so folks on the free plan can use it, and
+  it seems to have a marginal performance improvement)
 - Register memory: ELVM specifies 6 read/write registers, which we drop the
   letters for and instead refer to by numerical index. Like variable memory,
   these are just a single-mode collection of 6 variables.
@@ -339,9 +341,8 @@ variables. Here's the following conversion table:
 | GE          | 16    |
 | DUMP        | 17    |
 
-For example, `REG c, p1` becomes `0 2 1` and `IMM 5, p0` becomes `1 5 0`. Each
-variable in program memory has three modes, Op (short for op code), Arg1, and
-Arg2, which hold the three values of the instruction.
+For example, `REG c, p1` becomes `0 2 1` and `IMM 5, p0` becomes `1 5 0`. These
+are the numbers that are stored in the figma variables.
 
 ### Program state and control flow
 
