@@ -47,6 +47,10 @@ figma.ui.onmessage = (msg) => {
         const opMode = (_a = pgmemModes.find((mode) => mode.name === "Op")) === null || _a === void 0 ? void 0 : _a.modeId;
         const arg1Mode = (_b = pgmemModes.find((mode) => mode.name === "Arg1")) === null || _b === void 0 ? void 0 : _b.modeId;
         const arg2Mode = (_c = pgmemModes.find((mode) => mode.name === "Arg2")) === null || _c === void 0 ? void 0 : _c.modeId;
+        if (!opMode || !arg1Mode || !arg2Mode) {
+            console.log(`Could not find modes for program memory - are the variables configured correctly?`);
+            return;
+        }
         const dataMode = datacollection.modes[0].modeId;
         const dispatchMode = dispatchcollection.modes[0].modeId;
         // Data mem
@@ -58,6 +62,14 @@ figma.ui.onmessage = (msg) => {
             }
             dataMemVar.setValueForMode(dataMode, msg.compiled.data[i]);
         }
+        // Clear rest of data mem
+        for (let i = msg.compiled.data.length; i < datacollection.variableIds.length; i++) {
+            const dataMemVar = cachedVariables.find((variable) => variable.name === `datamem_${i}`);
+            if (!dataMemVar) {
+                break;
+            }
+            dataMemVar.setValueForMode(dataMode, 0);
+        }
         // Dispatch mem
         for (let i = 0; i < msg.compiled.dispatch.length; i++) {
             const dispatchMemVar = cachedVariables.find((variable) => variable.name === `dispatchmem_${i}`);
@@ -67,6 +79,14 @@ figma.ui.onmessage = (msg) => {
             }
             dispatchMemVar.setValueForMode(dispatchMode, msg.compiled.dispatch[i]);
         }
+        // clear rest of dispatch mem
+        for (let i = msg.compiled.dispatch.length; i < dispatchcollection.variableIds.length; i++) {
+            const dispatchMemVar = cachedVariables.find((variable) => variable.name === `dispatchmem_${i}`);
+            if (!dispatchMemVar) {
+                break;
+            }
+            dispatchMemVar.setValueForMode(dispatchMode, 0);
+        }
         // Program mem
         for (let i = 0; i < msg.compiled.pgm.length; i++) {
             const programMemVar = cachedVariables.find((variable) => variable.name === `pgmem_${i}`);
@@ -74,13 +94,19 @@ figma.ui.onmessage = (msg) => {
                 console.log(`Could not find variable pgmem_${i} - is the program too large?`);
                 break;
             }
-            if (!opMode || !arg1Mode || !arg2Mode) {
-                console.log(`Could not find modes for pgmem_${i} - are the variables configured correctly?`);
-                break;
-            }
             programMemVar.setValueForMode(opMode, msg.compiled.pgm[i][0]);
             programMemVar.setValueForMode(arg1Mode, msg.compiled.pgm[i][1]);
             programMemVar.setValueForMode(arg2Mode, msg.compiled.pgm[i][2]);
+        }
+        // Clear rest of program mem
+        for (let i = msg.compiled.pgm.length; i < pgmemcollection.variableIds.length; i++) {
+            const programMemVar = cachedVariables.find((variable) => variable.name === `pgmem_${i}`);
+            if (!programMemVar) {
+                break;
+            }
+            programMemVar.setValueForMode(opMode, 0);
+            programMemVar.setValueForMode(arg1Mode, 0);
+            programMemVar.setValueForMode(arg2Mode, 0);
         }
     }
     if (msg.type === "buildVarSets") {

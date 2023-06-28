@@ -1,21 +1,3 @@
-<!-- <h2>Rectangle Creator</h2>
-<p>Count: <input id="count" value="5"></p>
-<button id="create">Create</button>
-<button id="cancel">Cancel</button>
-<script>
-
-document.getElementById('create').onclick = () => {
-const textbox = document.getElementById('count');
-const count = parseInt(textbox.value, 10);
-parent.postMessage({ pluginMessage: { type: 'create-rectangles', count } }, '*')
-}
-
-document.getElementById('cancel').onclick = () => {
-parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*')
-}
-
-</script> -->
-
 <style>
 textarea {
   border-width: 3px;
@@ -167,15 +149,42 @@ function runEIR() {
   console.log("run EIR time: " + (new Date() - start) * 0.001);
 }
 
+async function custom_getchar(){
+  // Release the input field
+  // Wait for the user to press a key
+  const key = await new Promise((resolve, reject) => {
+    $("runtimeinput").disabled = false
+    $("runtimeinput").onkeydown = (e) => {
+      if(e.key !== "Shift" && e.key !== "Control" && e.key !== "Alt" && e.key !== "Meta"){
+        // convert the key to a char code
+        const charCode = e.key === "Enter" ? 10 : e.key.charCodeAt(0)
+        
+        // Remove all but the last char from the input field
+        $("runtimeinput").value = String.fromCharCode(charCode)
+        
+        // re-disable the input field
+        $("runtimeinput").disabled = true
+        $("runtimeinput").onkeydown = null
+        
+        // resolve the promise
+        resolve(charCode)
+      }
+    }
+
+    $("runtimeinput").focus()    
+  })
+
+  return key
+}
 function runJS() {
   var start = new Date();
   try {
     const cleanedUp = elvmAssemblyOutputToJSON($("trg").value)
-    runCompiled(cleanedUp, get_getchar(src), get_putchar()).then((runtimeData)=>{
+    runCompiled(cleanedUp, custom_getchar, get_putchar_realtime()).then((runtimeData)=>{
       $("instructionCount").innerText = runtimeData.instructionCount
       $("maxMemoryUse").innerText = runtimeData.maxMemoryUse
     })
-    $("out").value = OUTPUTS;
+    // $("out").value = OUTPUTS;
   } catch (e) {
     console.error(e);
     $("err").innerHTML += e + "\n";
@@ -531,31 +540,139 @@ int main() {
 <div class="box">Assembly + Labels</div>
 <div class="box">
 <textarea id="llcode" cols=40 rows=24>
-// Store 0 into A
-IMM 0 0
-RES a
+
+// Asks for your name, then prints "Hello, <name>!"
+
+// Print "Your name: "
+IMM 89 0
+PUTC
+IMM 111 0
+PUTC
+IMM 117 0
+PUTC
+IMM 114 0
+PUTC
+IMM 32 0
+PUTC
+IMM 110 0
+PUTC
+IMM 97 0
+PUTC
+IMM 109 0
+PUTC
+IMM 101 0
+PUTC
+IMM 58 0
+PUTC
+IMM 32 0
+PUTC
 
 .L1
-// Print some stuff
-REG a 0
-IMM 49 1
-ADD
-PUTC
-IMM 10 0
+
+// Read in the input
+GETC
+
+// Echo input
 PUTC
 
-// a++
+// Store in memory at register A
+REG a 1
+STORE
+
+// Jump to L2 if input is a newline
+IMM 10 1
+EQ
+IMM 2 2
+CJMP
+
+// A++
 REG a 0
 IMM 1 1
 ADD
 RES a
 
-// if a < 12 loop
-IMM 12 1
-LT
+// Jump to .L1
+IMM 0 1
 IMM 1 2
 CJMP
+
+.L2
+
+// Print "Hello, "
+IMM 72 0
+PUTC
+IMM 101 0
+PUTC
+IMM 108 0
+PUTC
+IMM 108 0
+PUTC
+IMM 111 0
+PUTC
+IMM 44 0
+PUTC
+IMM 32 0
+PUTC
+
+// Print the stored name
+// Use register B as a counter
+.L3
+REG b 1
+LOAD
+PUTC
+
+// b++
+REG b 0
+IMM 1 1
+ADD
+RES b
+
+// Note that a represents the index of the last character, which is the newline
+// character at the end. To avoid the newline, we break if b>=a
+REG a 1
+IMM 4 2
+GE
+CJMP
+
+// Otherwise, loop back to .L3
+IMM 1 0
+IMM 3 2
+CJMP
+
+.L4
+
+// End with !
+IMM 33 0
+PUTC
+
 EXIT
+
+    
+// // Store 0 into A
+// IMM 0 0
+// RES a
+
+// .L1
+// // Print some stuff
+// REG a 0
+// IMM 49 1
+// ADD
+// PUTC
+// IMM 10 0
+// PUTC
+
+// // a++
+// REG a 0
+// IMM 1 1
+// ADD
+// RES a
+
+// // if a < 12 loop
+// IMM 12 1
+// LT
+// IMM 1 2
+// CJMP
+// EXIT
 </textarea>
 </div>
 </div>
@@ -580,15 +697,17 @@ EXIT
 <div class="box">
   <div>JS Runtime output</div>
 <textarea id="out" cols=40 rows=24></textarea>
+<div>Input:
+<input type="text" value="" disabled id="runtimeinput"></div>
 </div>
 </div>
+<input type="button" value="Run" onclick="runJS()">
 <div>Program memory size: <span id="pgmemsize">-</span> variables (assemble to update)</div>
 <div>Dispatch memory size: <span id="dispatchmemsize">-</span> variables (assemble to update)</div>
 <div>Data memory size: <span id="varmemsize">-</span> variables (assemble to update) - you may need more for dynamic mem access</div>
 <div>Runtime instructions: <span id="instructionCount">-</span> (run to update)</div>
 <div>Runtime memory use: <span id="maxMemoryUse">-</span> (run to update)</div>
 <!-- <input type="button" value="Run EIR" onclick="runEIR()"> -->
-<input type="button" value="Run" onclick="runJS()">
 
 
   

@@ -147,7 +147,7 @@ async function runCompiled(compiled, getChar, putChar) {
         putChar(parameterRegisters[0]);
         break;
       case FPVM.GETC:
-        parameterRegisters[0] = getChar();
+        parameterRegisters[0] = await getChar();
         break;
       case FPVM.CJMP:
         if (parameterRegisters[0]) {
