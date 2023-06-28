@@ -18,9 +18,7 @@ array, we can use
 To keep the number of if statements down, we want to abstract away reads/writes
 so that we can reuse them as much as we can.
 
-### Types of Memory
-
-First, we implement the existing ELVM memory.
+In order to implement the existing ELVM memory, we have:
 
 - Variable memory: only made as big as practical, just a single-mode collection of
   float variables read/written by LOAD and STORE.
@@ -35,7 +33,7 @@ First, we implement the existing ELVM memory.
   letters for and instead refer to by numerical index. Like variable memory,
   these are just a single-mode collection of 6 variables.
 
-We also have two new types of memory.
+We also have two new types of memory:
 
 - Dispatch table: read-only memory that maps program counter value to
   instruction number. The compiler outputs jumps relative to program counter,
@@ -117,7 +115,7 @@ Stores the provided immediate value in the destination p register.
 
 Copies p0, usually the "result" of the operation, to the destination register.
 
-## Modified existing instructions
+## Modified ELVM instructions
 
 Existing instructions are modified to perform computations with the P register.
 
@@ -272,33 +270,108 @@ No-op
 
 ## Implementation
 
-The architecture is implemented in Figma Prototyping using a set of frames.
-Since Array reads/writes are complicated, these get their own reads, as does
-each instruction.
+### Transferring the program
 
-### PGM_READ
+The compiled programs are converted to ints when they are stored in the figma
+variables. Here's the following conversion table:
+
+| Register | Value |
+| -------- | ----- |
+| a        | 0     |
+| b        | 1     |
+| c        | 2     |
+| d        | 3     |
+| bp       | 4     |
+| sp       | 5     |
+
+| Param register | Value |
+| -------------- | ----- |
+| p0             | 0     |
+| p1             | 1     |
+| p2             | 2     |
+
+| Instruction | Value |
+| ----------- | ----- |
+| REG         | 0     |
+| IMM         | 1     |
+| RES         | 2     |
+| ADD         | 3     |
+| SUB         | 4     |
+| LOAD        | 5     |
+| STORE       | 6     |
+| PUTC        | 7     |
+| GETC        | 8     |
+| EXIT        | 9     |
+| CJMP        | 10    |
+| EQ          | 11    |
+| NE          | 12    |
+| LT          | 13    |
+| GT          | 14    |
+| LE          | 15    |
+| GE          | 16    |
+| DUMP        | 17    |
+
+For example, `REG c, p1` becomes `0 2 1` and `IMM 5, p0` becomes `1 5 0`. Each
+variable in program memory has three modes, Op (short for op code), Arg1, and
+Arg2, which hold the three values of the instruction.
+
+### Program state and control flow
+
+Control flow is implemented in Figma Prototyping using a set of frames. You can
+think of the frames as a giant state machine, and each frame has an "After
+Delay" interaction set to automatically run prototyping code.
+
+We give each instruction has its own frame, prefixed with `INST_`, which holds
+the corresponding logic for that instruction. Since Array reads/writes are
+complicated, we have dedicated frames for reading Program memory and Dispatch
+memory reads called `PGM_READ` and `DISPATCH_READ` respectively. We also have a
+helper frame called `PGM_EVAL` that serves as a giant switch statement and
+forwards to the correct `INST_*` frame.
+
+The state of the program starts with the instruction pointer variable, called
+`inst_ptr`, which keeps track of which instruction to run next. To begin running
+the program (and after each instruction), we return here to fetch our next
+instruction using the `PGM_READ` frame.
+
+#### PGM_READ
 
 This is the entry point to the program. Using the instruction pointer
 (inst_ptr), it reads the current instruction from program memory and stores it
-in the instruction register (inst_op, inst_arg1, inst_arg2).
+in three helper variables (inst_op, inst_arg1, inst_arg2). These variables will
+be later to perform the relevant computation.
 
 After reading, the instruction pointer is incremented for the next read, and
 the current instruction is evaluated by navigating to the PGM_EVAL frame.
 
-### PGM_EVAL
+#### PGM_EVAL
 
-This command just checks the current instruction op and forwards it to the
-relevant INST_XXX frame.
+This command checks the current instruction op and forwards it to the relevant
+INST_XXX frame.
 
-### INST_XXX
+#### INST\_\*
 
 Each instruction has its own frame. It reads the arguments from the instruction
 register and performs the relevant computation. After the computation is done,
 it forwards to the PGM_READ frame to read the next instruction.
 
-### DISPATCH_READ
+#### DISPATCH_READ
 
 When INST_CJMP decides to jump, it forwards to this frame. This frame reads the
 dispatch memory using the p2 register as the address, and sets the instruction
 pointer to the result. After reading, it forwards to the PGM_READ frame to read
 the next instruction.
+
+## Thoughts
+
+By introducing the p-register, we need 2-4x more instructions to perform the
+same computation. This also means our programs get 2-4x larger. We also get a
+kind of memory bottleneck because most of the instructions are just moving data
+in and out of the p registers.
+
+Let's not forget the original motivation which was to make an ELVM compatible
+instruction target, and this architecture has achieved exactly that. If we were
+to further mod ELVM or even start from LLVM to make a custom compiler, we could
+definitely do better. Better still, we could bite the bullet and incorporate
+more complexity into the Figma prototype to make it more efficient, e.g. having
+different instructions for registers vs immediates, or having a better way to
+encode whether a particular value is a register or an immediate.
