@@ -5,9 +5,9 @@ plugin and most tooling needed to build it.
 
 **Live Figma File link [HERE](https://www.figma.com/file/21tGuyZAeOmk6Ejk0Y4wt1/Figma-Proto-VM!?type=design&node-id=0-1&mode=design&t=jEIGRgyL2iJZqOkD-11)!**
 
-[![Figma Proto VM Screenrecord copy](https://github.com/willy-vvu/FigmaProtoVM/assets/3529065/4de8be6c-9892-452b-8db6-464fd7a19bfd)](https://twitter.com/willyvvu/status/1673565503602962432?s=20)
+![Figma Proto VM Screenrecord copy](https://github.com/willy-vvu/FigmaProtoVM/assets/3529065/4de8be6c-9892-452b-8db6-464fd7a19bfd)
 
-(Click the gif for the full video)
+[Click here for the full video](https://twitter.com/willyvvu/status/1673565503602962432?s=20)
 
 I've left the `dist` folder in the repo so you can try it out without building
 it yourself. Just load the plugin as a dev plugin and you should be good to go!
