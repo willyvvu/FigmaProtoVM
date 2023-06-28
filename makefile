@@ -41,7 +41,7 @@ codegen/elvm/target/js.c: codegen/figmaproto.c codegen/elvm/modified
 # If the readme doesn't exist, we gotta clone the elvm repo
 codegen/elvm/README.md:
 	git submodule update --init --recursive \
-	|| echo "Did you download the repository as .zip? You may need to clone the repository instead." && false
+	|| (echo "Did you download the repository as .zip? You may need to clone the repository instead." && false)
 
 # Target to clean up cloned repository (restore it back to original state)
 elvm-clean:
