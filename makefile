@@ -27,7 +27,7 @@ codegen/elvm/out/8cc.c.eir.asmjs: codegen/elvm/Makefile codegen/elvm/target/js.c
 
 # We want to modify certain files on our first run, so we can use a fake file to
 # signal to make that we need to do this (otherwise make won't know from just timestamps)
-codegen/elvm/modified: 
+codegen/elvm/modified: codegen/elvm/README.md
 	touch	codegen/elvm/modified
 
 # Make sure the makefile is up to date with our custom edits
@@ -37,6 +37,10 @@ codegen/elvm/Makefile: helpers/edit_elvm_makefile.js codegen/elvm/modified
 # Copy our custom files into the submodule to override the original js target
 codegen/elvm/target/js.c: codegen/figmaproto.c codegen/elvm/modified
 	cp codegen/figmaproto.c codegen/elvm/target/js.c
+
+# If the readme doesn't exist, we gotta clone the elvm repo
+codegen/elvm/README.md:
+	git submodule update --init --recursive
 
 # Target to clean up cloned repository (restore it back to original state)
 elvm-clean:
